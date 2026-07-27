@@ -1,0 +1,42 @@
+services:
+  app:
+    build: .
+    image: todo-app:latest
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - todo-data:/app/data
+      - todo-logs:/app/logs
+    expose:
+      - "3000"
+    # No "container_name" and no fixed host port -> allows `docker compose up --scale app=N`
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+
+  nginx:
+    image: nginx:stable-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - app
+
+  # ---- Monitoring dashboard (self-hosted, screenshot-able) ----
+  uptime-kuma:
+    image: louislam/uptime-kuma:1
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    volumes:
+      - uptime-kuma-data:/app/data
+
+volumes:
+  todo-data:
+  todo-logs:
+  uptime-kuma-data:

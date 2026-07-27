@@ -1,0 +1,56 @@
+name: CI/CD - Build, Test, Deploy
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-test:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run smoke test
+        run: npm test
+
+      - name: Build Docker image (validation only)
+        run: docker build -t todo-app:ci .
+
+  deploy:
+    name: Deploy to local Ubuntu VM
+    needs: build-and-test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    # This job runs on the self-hosted runner installed on your VM (see scripts/setup-vm.sh).
+    # Because the VM has no public IP, GitHub-hosted runners cannot SSH into it —
+    # the runner instead calls out to GitHub itself, which works for local-only machines.
+    runs-on: self-hosted
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Ensure .env exists on VM
+        run: |
+          if [ ! -f .env ]; then cp .env.example .env; fi
+
+      - name: Build & restart containers
+        run: |
+          docker compose down
+          docker compose up -d --build
+
+      - name: Health check
+        run: |
+          sleep 5
+          curl -f http://localhost/health || (docker compose logs && exit 1)
