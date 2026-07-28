@@ -1,3 +1,4 @@
+name: todo-list
 services:
   app:
     build: .
