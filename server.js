@@ -13,7 +13,16 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // ---------- Security ----------
-app.use(helmet({ hsts: false }));
+app.use(
+  helmet({
+    hsts: false,
+    contentSecurityPolicy: {
+      directives: {
+        upgradeInsecureRequests: null,
+      },
+    },
+  })
+);
 
 const apiLimiter = rateLimit({
   windowMs: 60 * 1000, // 1 minute
